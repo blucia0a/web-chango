@@ -1,18 +1,3 @@
-/**
- * The base audiolet object.  Contains an output node which pulls data from
- * connected nodes.
- *
- * @constructor
- * @param {Number} [sampleRate=44100] The sample rate to run at.
- * @param {Number} [numberOfChannels=2] The number of output channels.
- * @param {Number} [bufferSize] Block size.  If undefined uses a sane default.
- */
-var Audiolet = function(sampleRate, numberOfChannels, bufferSize) {
-    this.output = new AudioletDestination(this, sampleRate,
-                                          numberOfChannels, bufferSize);
-};
-
-
 function AudioFileRequest(url, async) {
     this.url = url;
     if (typeof async == 'undefined' || async == null) {
@@ -1064,7 +1049,7 @@ AudioletDevice.prototype.tick = function(buffer, numberOfChannels) {
             for (var j = this.nodes.length - 1; j > 0; j--) {
                 this.nodes[j].tick();
             }
-            // Cut down tick to just sum the input samples 
+            // Cut down tick to just sum the input samples
             this.createInputSamples();
 
             for (var j = 0; j < numberOfChannels; j++) {
@@ -1106,7 +1091,7 @@ AudioletDevice.prototype.pause = function() {
  * Restart the output stream.
  */
 AudioletDevice.prototype.play = function() {
-   this.paused = false; 
+   this.paused = false;
 };
 
 /**
@@ -1167,6 +1152,21 @@ AudioletInput.prototype.disconnect = function(output) {
  */
 AudioletInput.prototype.toString = function() {
     return this.node.toString() + 'Input #' + this.index;
+};
+
+
+/**
+ * The base audiolet object.  Contains an output node which pulls data from
+ * connected nodes.
+ *
+ * @constructor
+ * @param {Number} [sampleRate=44100] The sample rate to run at.
+ * @param {Number} [numberOfChannels=2] The number of output channels.
+ * @param {Number} [bufferSize] Block size.  If undefined uses a sane default.
+ */
+var Audiolet = function(sampleRate, numberOfChannels, bufferSize) {
+    this.output = new AudioletDestination(this, sampleRate,
+                                          numberOfChannels, bufferSize);
 };
 
 
@@ -2685,7 +2685,7 @@ BufferPlayer.prototype.generate = function() {
         var inputChannel = this.buffer.getChannelData(i);
         output.samples[i] = inputChannel[Math.floor(this.position)];
     }
-    
+
     this.position += playbackRate;
 
     if (this.position >= this.buffer.length) {
@@ -2924,80 +2924,6 @@ CrossFade.prototype.toString = function() {
  */
 
 /**
- * Filter for leaking DC offset.  Maths is taken from
- * https://ccrma.stanford.edu/~jos/filters/DC_Blocker.html
- *
- * **Inputs**
- *
- * - Audio
- * - Filter coefficient
- *
- * **Outputs**
- *
- * - Filtered audio
- *
- * **Parameters**
- *
- * - coefficient The filter coefficient.  Linked to input 1.
- *
- * @constructor
- * @extends AudioletNode
- * @param {Audiolet} audiolet The audiolet object.
- * @param {Number} [coefficient=0.995] The initial coefficient.
- */
-var DCFilter = function(audiolet, coefficient) {
-    AudioletNode.call(this, audiolet, 2, 1);
-
-    // Same number of output channels as input channels
-    this.linkNumberOfOutputChannels(0, 0);
-
-    this.coefficient = new AudioletParameter(this, 1, coefficient || 0.995);
-
-    // Delayed values
-    this.xValues = [];
-    this.yValues = [];
-};
-extend(DCFilter, AudioletNode);
-
-/**
- * Process samples
- */
-DCFilter.prototype.generate = function() {
-    var coefficient = this.coefficient.getValue();
-    var input = this.inputs[0];
-    var numberOfChannels = input.samples.length;
-    for (var i = 0; i < numberOfChannels; i++) {
-        if (i >= this.xValues.length) {
-            this.xValues.push(0);
-        }
-        if (i >= this.yValues.length) {
-            this.yValues.push(0);
-        }
-
-        var x0 = input.samples[i];
-        var y0 = x0 - this.xValues[i] + coefficient * this.yValues[i];
-
-        this.outputs[0].samples[i] = y0;
-
-        this.xValues[i] = x0;
-        this.yValues[i] = y0;
-    }
-};
-
-/**
- * toString
- *
- * @return {String} String representation.
- */
-DCFilter.prototype.toString = function() {
-    return 'DC Filter';
-};
-
-/*!
- * @depends ../core/AudioletNode.js
- */
-
-/**
  * Damped comb filter
  *
  * **Inputs**
@@ -3091,6 +3017,80 @@ DampedCombFilter.prototype.generate = function() {
  */
 DampedCombFilter.prototype.toString = function() {
     return 'Damped Comb Filter';
+};
+
+/*!
+ * @depends ../core/AudioletNode.js
+ */
+
+/**
+ * Filter for leaking DC offset.  Maths is taken from
+ * https://ccrma.stanford.edu/~jos/filters/DC_Blocker.html
+ *
+ * **Inputs**
+ *
+ * - Audio
+ * - Filter coefficient
+ *
+ * **Outputs**
+ *
+ * - Filtered audio
+ *
+ * **Parameters**
+ *
+ * - coefficient The filter coefficient.  Linked to input 1.
+ *
+ * @constructor
+ * @extends AudioletNode
+ * @param {Audiolet} audiolet The audiolet object.
+ * @param {Number} [coefficient=0.995] The initial coefficient.
+ */
+var DCFilter = function(audiolet, coefficient) {
+    AudioletNode.call(this, audiolet, 2, 1);
+
+    // Same number of output channels as input channels
+    this.linkNumberOfOutputChannels(0, 0);
+
+    this.coefficient = new AudioletParameter(this, 1, coefficient || 0.995);
+
+    // Delayed values
+    this.xValues = [];
+    this.yValues = [];
+};
+extend(DCFilter, AudioletNode);
+
+/**
+ * Process samples
+ */
+DCFilter.prototype.generate = function() {
+    var coefficient = this.coefficient.getValue();
+    var input = this.inputs[0];
+    var numberOfChannels = input.samples.length;
+    for (var i = 0; i < numberOfChannels; i++) {
+        if (i >= this.xValues.length) {
+            this.xValues.push(0);
+        }
+        if (i >= this.yValues.length) {
+            this.yValues.push(0);
+        }
+
+        var x0 = input.samples[i];
+        var y0 = x0 - this.xValues[i] + coefficient * this.yValues[i];
+
+        this.outputs[0].samples[i] = y0;
+
+        this.xValues[i] = x0;
+        this.yValues[i] = y0;
+    }
+};
+
+/**
+ * toString
+ *
+ * @return {String} String representation.
+ */
+DCFilter.prototype.toString = function() {
+    return 'DC Filter';
 };
 
 /*!
@@ -3254,6 +3254,98 @@ DiscontinuityDetector.prototype.toString = function() {
  */
 
 /**
+ * Delay line with feedback
+ *
+ * **Inputs**
+ *
+ * - Audio
+ * - Delay Time
+ * - Feedback
+ * - Mix
+ *
+ * **Outputs**
+ *
+ * - Delayed audio
+ *
+ * **Parameters**
+ *
+ * - delayTime The delay time in seconds.  Linked to input 1.
+ * - feedback The amount of feedback.  Linked to input 2.
+ * - mix The amount of delay to mix into the dry signal.  Linked to input 3.
+ *
+ * @constructor
+ * @extends AudioletNode
+ * @param {Audiolet} audiolet The audiolet object.
+ * @param {Number} maximumDelayTime The largest allowable delay time.
+ * @param {Number} delayTime The initial delay time.
+ * @param {Number} feedabck The initial feedback amount.
+ * @param {Number} mix The initial mix amount.
+ */
+var FeedbackDelay = function(audiolet, maximumDelayTime, delayTime, feedback,
+                             mix) {
+    AudioletNode.call(this, audiolet, 4, 1);
+    this.linkNumberOfOutputChannels(0, 0);
+    this.maximumDelayTime = maximumDelayTime;
+    this.delayTime = new AudioletParameter(this, 1, delayTime || 1);
+    this.feedback = new AudioletParameter(this, 2, feedback || 0.5);
+    this.mix = new AudioletParameter(this, 3, mix || 1);
+    var bufferSize = maximumDelayTime * this.audiolet.device.sampleRate;
+    this.buffers = [];
+    this.readWriteIndex = 0;
+};
+extend(FeedbackDelay, AudioletNode);
+
+/**
+ * Process samples
+ */
+FeedbackDelay.prototype.generate = function() {
+    var input = this.inputs[0];
+    var output = this.outputs[0];
+
+    var sampleRate = this.audiolet.output.device.sampleRate;
+
+    var delayTime = this.delayTime.getValue() * sampleRate;
+    var feedback = this.feedback.getValue();
+    var mix = this.mix.getValue();
+
+    var numberOfChannels = input.samples.length;
+    var numberOfBuffers = this.buffers.length;
+    for (var i = 0; i < numberOfChannels; i++) {
+        if (i >= numberOfBuffers) {
+            // Create buffer for channel if it doesn't already exist
+            var bufferSize = this.maximumDelayTime * sampleRate;
+            this.buffers.push(new Float32Array(bufferSize));
+        }
+
+        var buffer = this.buffers[i];
+
+        var inputSample = input.samples[i];
+        var bufferSample = buffer[this.readWriteIndex];
+
+        output.samples[i] = mix * bufferSample + (1 - mix) * inputSample;
+        buffer[this.readWriteIndex] = inputSample + feedback * bufferSample;
+    }
+
+    this.readWriteIndex += 1;
+    if (this.readWriteIndex >= delayTime) {
+        this.readWriteIndex = 0;
+    }
+};
+
+/**
+ * toString
+ *
+ * @return {String} String representation.
+ */
+FeedbackDelay.prototype.toString = function() {
+    return 'Feedback Delay';
+};
+
+/*!
+ * @depends ../core/AudioletNode.js
+ */
+
+/**
  * Fast Fourier Transform
  *
  * **Inputs**
@@ -3383,98 +3475,6 @@ FFT.prototype.transform = function() {
  */
 FFT.prototype.toString = function() {
     return 'FFT';
-};
-
-/*!
- * @depends ../core/AudioletNode.js
- */
-
-/**
- * Delay line with feedback
- *
- * **Inputs**
- *
- * - Audio
- * - Delay Time
- * - Feedback
- * - Mix
- *
- * **Outputs**
- *
- * - Delayed audio
- *
- * **Parameters**
- *
- * - delayTime The delay time in seconds.  Linked to input 1.
- * - feedback The amount of feedback.  Linked to input 2.
- * - mix The amount of delay to mix into the dry signal.  Linked to input 3.
- *
- * @constructor
- * @extends AudioletNode
- * @param {Audiolet} audiolet The audiolet object.
- * @param {Number} maximumDelayTime The largest allowable delay time.
- * @param {Number} delayTime The initial delay time.
- * @param {Number} feedabck The initial feedback amount.
- * @param {Number} mix The initial mix amount.
- */
-var FeedbackDelay = function(audiolet, maximumDelayTime, delayTime, feedback,
-                             mix) {
-    AudioletNode.call(this, audiolet, 4, 1);
-    this.linkNumberOfOutputChannels(0, 0);
-    this.maximumDelayTime = maximumDelayTime;
-    this.delayTime = new AudioletParameter(this, 1, delayTime || 1);
-    this.feedback = new AudioletParameter(this, 2, feedback || 0.5);
-    this.mix = new AudioletParameter(this, 3, mix || 1);
-    var bufferSize = maximumDelayTime * this.audiolet.device.sampleRate;
-    this.buffers = [];
-    this.readWriteIndex = 0;
-};
-extend(FeedbackDelay, AudioletNode);
-
-/**
- * Process samples
- */
-FeedbackDelay.prototype.generate = function() {
-    var input = this.inputs[0];
-    var output = this.outputs[0];
-
-    var sampleRate = this.audiolet.output.device.sampleRate;
-
-    var delayTime = this.delayTime.getValue() * sampleRate;
-    var feedback = this.feedback.getValue();
-    var mix = this.mix.getValue();
-
-    var numberOfChannels = input.samples.length;
-    var numberOfBuffers = this.buffers.length;
-    for (var i = 0; i < numberOfChannels; i++) {
-        if (i >= numberOfBuffers) {
-            // Create buffer for channel if it doesn't already exist
-            var bufferSize = this.maximumDelayTime * sampleRate;
-            this.buffers.push(new Float32Array(bufferSize));
-        }
-
-        var buffer = this.buffers[i];
-
-        var inputSample = input.samples[i];
-        var bufferSample = buffer[this.readWriteIndex];
-
-        output.samples[i] = mix * bufferSample + (1 - mix) * inputSample;
-        buffer[this.readWriteIndex] = inputSample + feedback * bufferSample;
-    }
-
-    this.readWriteIndex += 1;
-    if (this.readWriteIndex >= delayTime) {
-        this.readWriteIndex = 0;
-    }
-};
-
-/**
- * toString
- *
- * @return {String} String representation.
- */
-FeedbackDelay.prototype.toString = function() {
-    return 'Feedback Delay';
 };
 
 /*!
@@ -3728,7 +3728,7 @@ IFFT.prototype.transform = function() {
         this.reverseReal[i] = this.realBuffer[this.reverseTable[i]];
         this.reverseImaginary[i] = this.imaginaryBuffer[this.reverseTable[i]];
     }
- 
+
     this.realBuffer.set(this.reverseReal);
     this.imaginaryBuffer.set(this.reverseImaginary);
 
@@ -3928,7 +3928,7 @@ Limiter.prototype.generate = function() {
         else {
             follower = release * (follower - absValue) + absValue;
         }
-        
+
         var diff = follower - threshold;
         if (diff > 0) {
             output.samples[i] = value / (1 + diff);
@@ -4745,7 +4745,7 @@ var WebKitBufferPlayer = function(audiolet, onComplete) {
 
     // Until we are loaded, output no channels.
     this.setNumberOfOutputChannels(0, 0);
-    
+
     if (!this.isWebKit) {
         return;
     }
@@ -4789,7 +4789,7 @@ WebKitBufferPlayer.prototype.stop = function() {
     this.endTime = null;
 
     this.setNumberOfOutputChannels(0);
-   
+
     this.disconnectWebKitNodes();
 };
 
@@ -5281,7 +5281,7 @@ Tanh.prototype.generate = function() {
         var value = input.samples[i];
         output.samples[i] = (Math.exp(value) - Math.exp(-value)) /
                             (Math.exp(value) + Math.exp(-value));
-    } 
+    }
 };
 
 /**
@@ -6272,7 +6272,7 @@ void function (prefixes, urlPrefixes) {
 		var b, a = prefixes.slice();
 
 		for (b=a.shift(); typeof b !== 'undefined'; b=a.shift()) {
-			b = Function('return typeof ' + b + name + 
+			b = Function('return typeof ' + b + name +
 				'=== "undefined" ? undefined : ' +
 				b + name)();
 
@@ -6450,9 +6450,6 @@ function inlineWorker (script) {
 	}
 
 	var createDynURL = Sink.createDynURL;
-
-	if (!createDynURL) return null;
-
 	var worker;
 
 	if (inlineWorker.createURL) {
@@ -6615,77 +6612,6 @@ Sink.sinks.moz = Sink.sinks.audiodata;
 }(this.Sink);
 void function (Sink) {
 
-var cubeb;
-
-try {
-	cubeb = require('cubeb');
-} catch (e) {
-	return;
-}
-
-var getContext = function () {
-	var ctx;
-
-	return function () {
-		ctx = new cubeb.Context(
-			"sink.js " + process.pid + ' ' + new Date()
-		);
-
-		getContext = function () { return ctx; };
-
-		return ctx;
-	};
-}();
-
-var streamCount = 0;
-
-Sink.sinks('cubeb', function () {
-	var self = this;
-
-	self.start.apply(self, arguments);
-
-	self._ctx = getContext();
-	self._stream = new cubeb.Stream(
-		self._ctx,
-		self._ctx.name + ' ' + streamCount++,
-		cubeb.SAMPLE_FLOAT32LE,
-		self.channelCount,
-		self.sampleRate,
-		self.bufferSize,
-		self._latency,
-		function (frameCount) {
-			var buffer = new Buffer(
-				4 * frameCount * self.channelCount);
-			var soundData = new Float32Array(buffer);
-
-			self.process(soundData, self.channelCount);
-
-			self._stream.write(buffer);
-			self._stream.release();
-		},
-		function (state) {}
-	);
-
-	self._stream.start();
-}, {
-	_ctx: null,
-	_stream: null,
-	_latency: 250,
-	bufferSize: 4096,
-
-	kill: function () {
-		this._stream.stop();
-		this.emit('kill');
-	},
-
-	getPlaybackTime: function () {
-		return this._stream.position;
-	}
-});
-
-}(this.Sink);
-void function (Sink) {
-
 /**
  * A dummy Sink. (No output)
 */
@@ -6693,7 +6619,7 @@ void function (Sink) {
 Sink.sinks('dummy', function () {
 	var	self = this;
 	self.start.apply(self, arguments);
-	
+
 	function bufferFill () {
 		var	soundData = new Float32Array(self.bufferSize * self.channelCount);
 		self.process(soundData, self.channelCount);
@@ -6738,7 +6664,7 @@ sinks('wav', function () {
 		zeroData		= new Float32Array(self.bufferSize * self.channelCount);
 
 	if (!newAudio().canPlayType('audio/wav; codecs=1') || !btoa) throw 0;
-	
+
 	function bufferFill () {
 		if (self._audio.hasNextFrame) return;
 
@@ -6758,7 +6684,7 @@ sinks('wav', function () {
 
 		if (!self._audio.currentFrame.src) self._audio.nextClip();
 	}
-	
+
 	self.kill		= Sink.doInterval(bufferFill, 40);
 	self._bufferFill	= bufferFill;
 	self._audio		= audio;
@@ -6812,7 +6738,7 @@ sinks.wav.wavAudio = wavAudio;
 }(this.Sink));
  (function (sinks, fixChrome82795) {
 
-var AudioContext = typeof window === 'undefined' ? null : window.webkitAudioContext || window.AudioContext;
+var AudioContext = typeof window === 'undefined' ? null : window.AudioContext || window.webkitAudioContext;
 
 /**
  * A sink class for the Web Audio API
@@ -6825,7 +6751,7 @@ sinks('webaudio', function (readFn, channelCount, bufferSize, sampleRate) {
 		soundData	= null,
 		zeroBuffer	= null;
 	self.start.apply(self, arguments);
-	node = context.createJavaScriptNode(self.bufferSize, self.channelCount, self.channelCount);
+    node = context.createScriptProcessor(self.bufferSize, self.channelCount, self.channelCount);
 
 	function bufferFill(e) {
 		var	outputBuffer	= e.outputBuffer,
@@ -6836,7 +6762,7 @@ sinks('webaudio', function (readFn, channelCount, bufferSize, sampleRate) {
 			tail;
 
 		self.ready();
-		
+
 		soundData	= soundData && soundData.length === l * channelCount ? soundData : new Float32Array(l * channelCount);
 		zeroBuffer	= zeroBuffer && zeroBuffer.length === soundData.length ? zeroBuffer : new Float32Array(l * channelCount);
 		soundData.set(zeroBuffer);
@@ -6960,7 +6886,7 @@ Sink.sinks('worker', function () {
 			size		= outputBuffer.size,
 			channels	= new Array(channelCount),
 			tail;
-		
+
 		soundData	= soundData && soundData.length === l * channelCount ? soundData : new Float32Array(l * channelCount);
 		zeroBuffer	= zeroBuffer && zeroBuffer.length === soundData.length ? zeroBuffer : new Float32Array(l * channelCount);
 		soundData.set(zeroBuffer);
@@ -7564,7 +7490,7 @@ proto.writeBuffersAsync = function (buffer) {
 			bufLength	= buf.b.length;
 			offset		= buf.d;
 			buf.d		-= Math.min(offset, l);
-			
+
 			for (n=0; n + offset < l && n < bufLength; n++) {
 				buffer[n + offset] += buf.b[n];
 			}
